@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ResetPasswordMail;
 use App\PasswordReset;
+use Carbon\Carbon;
 
 class UserController extends Controller
 {
@@ -41,7 +42,7 @@ class UserController extends Controller
             'username' => $request->username,
             'password' => Hash::make($request->password),
         ]);
-        return response(['message' => 'Thêm mới người dùng thành công'], 201);
+        return response(['message' => 'Create user successfully!'], 201);
     }
 
     function update(Request $request, $id)
@@ -54,7 +55,7 @@ class UserController extends Controller
             'username' => $request->username,
             'password' => Hash::make($request->password),
         ]);
-        return response(['message' => 'Chỉnh sửa người dùng thành công!'], 202);
+        return response(['message' => 'Edit user information successfully!'], 202);
     }
 
     /**
@@ -68,7 +69,7 @@ class UserController extends Controller
     {
         $user = User::find($id);
         $user->delete();
-        return response(['message' => 'Xoá người dùng thành công!'], 204);
+        return response(['message' => 'Delete user successfully!'], 204);
     }
 
     public function forgot(Request $request)
@@ -80,12 +81,13 @@ class UserController extends Controller
         }
 
         $token = random_int(100000, 999999);
+        $expired_at = Carbon::now()->addMinutes(5);
         while (PasswordReset::where('token', $token)->first()) {
             $token = random_int(100000, 999999);
         };
 
         Mail::to($user)->send(new ResetPasswordMail($token));
-
+        // dd(1);
 
         $user_check = PasswordReset::where('email', $request->email);
         if (isset($user_check)) {
@@ -95,16 +97,16 @@ class UserController extends Controller
         $passwordReset = new PasswordReset();
         $passwordReset->email = $user->email;
         $passwordReset->token = $token;
+        $passwordReset->expired_at = $expired_at;
         $passwordReset->save();
     }
 
     public function checkOTP(Request $request)
     {
-        $passwordReset = PasswordReset::where('token', $request->token)->first();
+        $passwordReset = PasswordReset::where('token', $request->token)->where('expired_at', '>=', Carbon::now())->first();
         if (!isset($passwordReset->email)) {
             return response()->json(['error' => 'Invalid token'], 401);
-        }
-
+        };
         $user = User::where('email', $passwordReset->email)->first();
         return response()->json($user, 200);
     }

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\LoginRequest;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
@@ -22,9 +24,15 @@ class AuthController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function login()
+    public function login(LoginRequest $request)
     {
-        $credentials = request(['email', 'password']);
+
+
+        $credentials = ['email' => $request->email, 'password' => $request->password];
+
+        if ($request->rememberme) {
+            JWTAuth::factory()->setTTL(60 * 24 * 365);
+        }
 
         if (!$token = auth()->attempt($credentials)) {
             return response()->json(['error' => 'Unauthorized'], 401);
@@ -51,7 +59,7 @@ class AuthController extends Controller
     public function logout()
     {
         auth()->logout();
-
+        
         return response()->json(['message' => 'Successfully logged out']);
     }
 
